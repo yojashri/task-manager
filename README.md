@@ -137,7 +137,7 @@ Frontend runs on → **[http://localhost:5173](http://localhost:5173)**
 
 # **Authentication & Authorization Flow**
 
-### ✔ User signs up
+### User signs up
 
 Password is hashed using bcrypt.
 
@@ -269,20 +269,7 @@ This ensures **only allowed tasks** are shown.
 
 AI assistance (ChatGPT) was used only for:
 
-* Code explanation
-* UI design suggestions
-* Improving readability
-* Bug fixing guidance
-
-All major logic including:
-
-* Role-based access
-* Middleware
-* JWT authentication
-* CRUD functionality
-* Student–Teacher mapping
-  was fully implemented and understood by me.
-
+AI tools were used only for minor guidance such as suggesting UI design improvements, enhancing readability, and providing general debugging ideas. All core logic and implementation — including authentication, authorization, JWT handling, password hashing, middleware, Student–Teacher relationship mapping, role-based access control, task CRUD operations, backend architecture, and frontend integration — were fully implemented and understood by me. The overall workflow, design decisions, and coding were done manually to ensure complete understanding and alignment with the assignment requirements.
 ---
 
 
@@ -290,3 +277,4 @@ All major logic including:
 # **Thank You**
 
 Feel free to contact me for clarifications or a live walkthrough!
+
