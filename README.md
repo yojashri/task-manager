@@ -269,7 +269,7 @@ This ensures **only allowed tasks** are shown.
 
 AI assistance (ChatGPT) was used only for:
 
-AI tools were used only for minor guidance such as suggesting UI design improvements, enhancing readability, and providing general debugging ideas. All core logic and implementation — including authentication, authorization, JWT handling, password hashing, middleware, Student–Teacher relationship mapping, role-based access control, task CRUD operations, backend architecture, and frontend integration — were fully implemented and understood by me. The overall workflow, design decisions, and coding were done manually to ensure complete understanding and alignment with the assignment requirements.
+AI tools were used only for minor guidance such as suggesting UI design improvements, enhancing readability, generating some boilerplate code structure, and providing general debugging ideas. While ChatGPT assisted in producing portions of the initial code layout, all core logic and implementation — including authentication, authorization, JWT handling, password hashing with bcrypt, middleware, Student–Teacher relationship mapping, role-based access control, task CRUD operations, backend architecture, and full frontend integration — were manually implemented, customized, and fully understood by me. The workflow, final code decisions, and feature logic were developed independently to ensure complete understanding and alignment with the assignment requirements.
 ---
 
 
@@ -277,4 +277,5 @@ AI tools were used only for minor guidance such as suggesting UI design improvem
 # **Thank You**
 
 Feel free to contact me for clarifications or a live walkthrough!
+
 
