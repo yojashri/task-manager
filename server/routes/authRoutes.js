@@ -2,8 +2,11 @@ const express = require("express");
 const router = express.Router();
 const { body } = require("express-validator");
 const authController = require("../controllers/authController");
+const User = require("../models/User"); // <-- IMPORTANT: add this
 
-// Signup Route
+// ============================
+// SIGNUP
+// ============================
 router.post(
   "/signup",
   [
@@ -14,7 +17,9 @@ router.post(
   authController.signup
 );
 
-// Login Route
+// ============================
+// LOGIN
+// ============================
 router.post(
   "/login",
   [
@@ -23,5 +28,21 @@ router.post(
   ],
   authController.login
 );
+
+// ============================
+// GET ALL USERS  (NEW ROUTE)
+// ============================
+// Needed so teacher can see ONLY assigned students' tasks
+router.get("/users", async (req, res) => {
+  try {
+    const users = await User.find().select("_id email role teacherId");
+    res.json({ success: true, users });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to load users",
+    });
+  }
+});
 
 module.exports = router;
