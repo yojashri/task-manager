@@ -11,17 +11,22 @@ export default function Signup() {
   });
 
   const submit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    try {
-      await api.post("/auth/signup", form);
-      alert("Signup successful! Please login.");
-      window.location.href = "/login";
-    } catch (err) {
-      alert(err.response?.data?.message);
-    }
-  };
+  try {
 
+    await api.post("/auth/signup", form);
+
+    alert("Signup successful!");
+
+    window.location.href = "/login";
+
+  } catch (err) {
+
+    alert(err.response?.data?.message || "Signup failed");
+
+  }
+};
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-[#e9f1ff] to-[#cfe0ff]">
       

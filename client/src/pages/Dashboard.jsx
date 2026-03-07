@@ -13,41 +13,66 @@ export default function Dashboard() {
   const [usersMap, setUsersMap] = useState({});
   const [showModal, setShowModal] = useState(false);
 
-  // ---------------- LOAD USERS ----------------
-  const loadUsers = async () => {
-    const res = await api.get("/auth/users");
+  // LOAD USERS
+const loadUsers = async () => {
+  try {
+    const res = await api.get("/auth/users")
 
-    let map = {};
-    let assigned = [];
+    const users = res?.data || []
 
-    res.data.users.forEach((u) => {
-      map[u._id] = u.email;
+    let map = {}
+    let assigned = []
+
+    users.forEach((u) => {
+
+      map[u.id] = u.email
+
       if (u.role === "student" && u.teacherId === user.id) {
-        assigned.push(u._id);
+        assigned.push(u.id)
       }
-    });
 
-    setUsersMap(map);
-    setAssignedStudents(assigned);
-  };
+    })
 
-  // ---------------- LOAD TASKS ----------------
+    setUsersMap(map)
+    setAssignedStudents(assigned)
+
+  } catch (err) {
+    console.error("Failed loading users", err)
+  }
+}
+  // LOAD TASKS
   const loadTasks = async () => {
-    const res = await api.get("/tasks");
-    const tasks = res.data.tasks;
+    try {
+      const res = await api.get("/tasks");
 
-    setMyTasks(tasks.filter((t) => t.userId === user.id));
-    setStudentTasks(tasks.filter((t) => assignedStudents.includes(t.userId)));
+      const tasks = res?.data || [];
+
+      setAllTasks(tasks);
+
+      setMyTasks(tasks.filter((t) => t.userId === user.id));
+
+      setStudentTasks(
+        tasks.filter((t) => assignedStudents.includes(t.userId))
+      );
+    } catch (err) {
+      console.error("Failed loading tasks", err);
+    }
   };
 
-  useEffect(() => { loadUsers(); }, []);
-  useEffect(() => { loadTasks(); }, [assignedStudents]);
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
-  // ---------------- CREATE TASK ----------------
+  useEffect(() => {
+    loadTasks();
+  }, [assignedStudents]);
+
+  // CREATE TASK
   const createTask = async (e) => {
     e.preventDefault();
 
     const today = new Date().toISOString().split("T")[0];
+
     const title = e.target.title.value;
     const description = e.target.description.value;
     const dueDate = e.target.dueDate.value;
@@ -57,16 +82,27 @@ export default function Dashboard() {
       return;
     }
 
-    await api.post("/tasks", { title, description, dueDate });
-    setShowModal(false);
-    loadTasks();
+    try {
+      await api.post("/tasks", { title, description, dueDate });
+
+      setShowModal(false);
+
+      e.target.reset();
+
+      loadTasks();
+    } catch (err) {
+      console.error("Task creation failed", err);
+    }
   };
 
-  // Group student tasks by email
+  // GROUP STUDENT TASKS
   const grouped = {};
+
   studentTasks.forEach((t) => {
     const email = usersMap[t.userId];
+
     if (!grouped[email]) grouped[email] = [];
+
     grouped[email].push(t);
   });
 
@@ -74,12 +110,13 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] p-[22px]">
 
       {/* HEADER */}
-      <div className="flex items-center justify-between
-                      bg-white/70 backdrop-blur-md
-                      shadow-[0_8px_30px_rgba(0,0,0,0.12)]
-                      rounded-[20px] border border-white/50
-                      px-[26px] py-[16px] mb-[28px]">
-
+      <div
+        className="flex items-center justify-between
+        bg-white/70 backdrop-blur-md
+        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
+        rounded-[20px] border border-white/50
+        px-[26px] py-[16px] mb-[28px]"
+      >
         <h1 className="text-[30px] font-extrabold text-[#1E1B4B] tracking-wide">
           EduTech
         </h1>
@@ -89,19 +126,21 @@ export default function Dashboard() {
         </h2>
 
         <button
-          onClick={logout}
+          onClick={()=>{console.log("Logging out..."); logout();}}
           className="px-[18px] py-[10px] rounded-[12px]
-                     bg-red-500 text-white shadow-lg
-                     hover:bg-red-600 transition-all">
+          bg-red-500 text-white shadow-lg
+          hover:bg-red-600 transition-all"
+        >
           Logout
         </button>
       </div>
 
-      {/* ---------------- STUDENT VIEW ---------------- */}
+      {/* STUDENT VIEW */}
       {user.role === "student" && (
-        <div className="bg-white/80 backdrop-blur-lg p-[25px]
-                        rounded-[20px] shadow-xl border border-white/50">
-
+        <div
+          className="bg-white/80 backdrop-blur-lg p-[25px]
+          rounded-[20px] shadow-xl border border-white/50"
+        >
           <h3 className="text-[22px] font-bold mb-[15px] text-[#1E1B4B]">
             My Tasks
           </h3>
@@ -113,26 +152,25 @@ export default function Dashboard() {
             usersMap={usersMap}
           />
 
-          {/* Floating Add Button */}
           <button
             onClick={() => setShowModal(true)}
             className="fixed bottom-[30px] right-[30px]
-                       bg-[#4F46E5] hover:bg-[#4338CA] text-white
-                       w-[60px] h-[60px] rounded-full text-[35px]
-                       shadow-xl flex items-center justify-center">
+            bg-[#4F46E5] hover:bg-[#4338CA] text-white
+            w-[60px] h-[60px] rounded-full text-[35px]
+            shadow-xl flex items-center justify-center"
+          >
             +
           </button>
         </div>
       )}
 
-      {/* ---------------- TEACHER VIEW ---------------- */}
+      {/* TEACHER VIEW */}
       {user.role === "teacher" && (
         <>
-          {/* My Tasks Card */}
-          <div className="bg-white/80 backdrop-blur-lg p-[25px]
-                          rounded-[20px] shadow-xl border border-white/50
-                          mb-[28px] relative">
-
+          <div
+            className="bg-white/80 backdrop-blur-lg p-[25px]
+            rounded-[20px] shadow-xl border border-white/50 mb-[28px] relative"
+          >
             <h3 className="text-[22px] font-bold mb-[15px] text-[#1E1B4B]">
               My Tasks (Teacher)
             </h3>
@@ -147,17 +185,18 @@ export default function Dashboard() {
             <button
               onClick={() => setShowModal(true)}
               className="absolute right-[20px] bottom-[20px]
-                         bg-[#4F46E5] hover:bg-[#4338CA] text-white
-                         w-[60px] h-[60px] rounded-full text-[35px]
-                         shadow-xl flex items-center justify-center">
+              bg-[#4F46E5] hover:bg-[#4338CA] text-white
+              w-[60px] h-[60px] rounded-full text-[35px]
+              shadow-xl flex items-center justify-center"
+            >
               +
             </button>
           </div>
 
-          {/* Student Tasks — Grouped */}
-          <div className="bg-white/80 backdrop-blur-lg p-[25px]
-                          rounded-[20px] shadow-xl border border-white/50">
-
+          <div
+            className="bg-white/80 backdrop-blur-lg p-[25px]
+            rounded-[20px] shadow-xl border border-white/50"
+          >
             <h3 className="text-[22px] font-bold mb-[20px] text-[#1E1B4B]">
               Assigned Student Tasks
             </h3>
@@ -170,10 +209,10 @@ export default function Dashboard() {
 
                 {grouped[email].map((task) => (
                   <div
-                    key={task._id}
+                    key={task.id}
                     className="p-[18px] bg-white/90 backdrop-blur-sm
-                               border border-indigo-100 shadow-md rounded-[16px] mb-[12px]">
-                    
+                    border border-indigo-100 shadow-md rounded-[16px] mb-[12px]"
+                  >
                     <p className="text-[17px] font-semibold text-[#1E1B4B]">
                       Title: <span className="font-normal">{task.title}</span>
                     </p>
@@ -193,42 +232,54 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* ---------------- MODAL ---------------- */}
+      {/* MODAL */}
       {showModal && (
         <>
           <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
 
           <div className="fixed inset-0 flex justify-center items-center">
-            <div className="bg-white/95 p-[25px] w-[360px]
-                            rounded-[20px] shadow-2xl border border-gray-200">
-
+            <div
+              className="bg-white/95 p-[25px] w-[360px]
+              rounded-[20px] shadow-2xl border border-gray-200"
+            >
               <h2 className="text-[20px] font-bold text-[#1E1B4B] mb-[15px]">
                 Create New Task
               </h2>
 
               <form onSubmit={createTask} className="space-y-[12px]">
-                <input name="title" placeholder="Title"
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80" />
+                <input
+                  name="title"
+                  placeholder="Title"
+                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
+                />
 
-                <textarea name="description" placeholder="Description"
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80" />
+                <textarea
+                  name="description"
+                  placeholder="Description"
+                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
+                />
 
-                <input name="dueDate" type="date"
+                <input
+                  name="dueDate"
+                  type="date"
                   min={new Date().toISOString().split("T")[0]}
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80" />
+                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
+                />
 
                 <div className="flex justify-end gap-[10px]">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}
-                    className="px-[14px] py-[8px] bg-gray-300 rounded-[10px]">
+                    className="px-[14px] py-[8px] bg-gray-300 rounded-[10px]"
+                  >
                     Cancel
                   </button>
 
                   <button
                     type="submit"
                     className="px-[14px] py-[8px] bg-[#4F46E5] text-white rounded-[10px]
-                               hover:bg-[#4338CA] shadow">
+                    hover:bg-[#4338CA] shadow"
+                  >
                     Create
                   </button>
                 </div>

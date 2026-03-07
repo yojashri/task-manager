@@ -10,15 +10,35 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   const submit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await api.post("/auth/login", { email, password });
-      login(res.data.user, res.data.token);
-      window.location.href = "/";
-    } catch (err) {
-      alert(err.response?.data?.message || "Invalid login");
-    }
-  };
+
+  e.preventDefault()
+  console.log("Attempting login with:", { email, password })
+
+  try {
+
+    const res = await api.post("/auth/login", {
+      email: email,
+      password: password
+    })
+
+    console.log("LOGIN RESPONSE:", res.data)
+
+    login(
+      res.data.user,
+      res.data.accessToken
+    )
+
+    window.location.href = "/"
+
+  } catch (err) {
+
+    console.log("LOGIN ERROR:", err)
+
+    alert(err.response?.data?.message || "Login failed")
+
+  }
+
+}
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-[#eef5ff] to-[#c9dfff]">
@@ -66,7 +86,7 @@ export default function Login() {
           />
 
           {/* LOGIN BUTTON */}
-          <button
+          <button type="submit"
             className="w-full py-[14px] rounded-[12px] text-white text-[16px] font-semibold
                        bg-[#2563eb] hover:bg-[#1d4ed8] transition
                        shadow-[0_6px_16px_rgba(37,99,235,0.35)]"

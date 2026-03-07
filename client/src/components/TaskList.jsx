@@ -1,84 +1,164 @@
+import { useState } from "react";
 import api from "../api/axios";
+import { FaEdit } from "react-icons/fa";
 
-export default function TaskList({ tasks, showActions, onChange, usersMap }) {
-  const updateProgress = async (taskId, value) => {
-    await api.put(`/tasks/${taskId}`, { progress: value });
-    onChange();
+export default function TaskList({ tasks, showActions, onChange }) {
+
+  const [editingTask, setEditingTask] = useState(null);
+
+  // DELETE TASK
+  const deleteTask = async (id) => {
+    try {
+      await api.delete(`/tasks/${id}`);
+      onChange();
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
   };
 
-  const deleteTask = async (taskId) => {
-    await api.delete(`/tasks/${taskId}`);
-    onChange();
+  // UPDATE TASK
+  const updateTask = async (e) => {
+    e.preventDefault();
+
+    const title = e.target.title.value;
+    const description = e.target.description.value;
+    const progress = e.target.progress.value;
+
+    try {
+      await api.put(`/tasks/${editingTask.id}`, {
+        title,
+        description,
+        progress
+      });
+
+      setEditingTask(null);
+      onChange();
+    } catch (err) {
+      console.error("Update failed", err);
+    }
   };
 
   return (
-    <div>
-      {tasks.length === 0 && (
-        <p className="text-gray-500 text-sm">No tasks found.</p>
-      )}
+    <div className="space-y-[15px]">
 
       {tasks.map((task) => (
         <div
-          key={task._id}
-          className="mb-[18px] p-[18px] rounded-[14px]
-                     border border-[#e5e9f2]
-                     bg-gradient-to-br from-[#ffffff] to-[#f7faff]
-                     shadow-[0_4px_15px_rgba(0,0,0,0.06)]"
+          key={task.id}
+          className="p-[18px] bg-white border shadow-md rounded-[16px]"
         >
-          {/* Title */}
-          <p className="text-[15px] font-semibold text-[#1E1B4B] mb-[6px]">
-            <span className="font-bold text-[#475569]">Title:</span> {task.title}
+
+          <p className="font-semibold text-[16px]">
+            Title: <span className="font-normal">{task.title}</span>
           </p>
 
-          {/* Description */}
-          <p className="text-[14px] text-[#475569] mb-[6px]">
-            <span className="font-bold text-[#475569]">Description:</span>{" "}
-            {task.description}
+          <p className="text-gray-700">
+            Description: {task.description}
           </p>
 
-          {/* Email for student tasks */}
-          {usersMap && usersMap[task.userId] && (
-            <p className="text-[13px] mt-[4px] text-[#444]">
-              <span className="font-bold text-[#475569]">Student:</span>{" "}
-              {usersMap[task.userId]}
-            </p>
-          )}
-
-          {/* Progress */}
-          <p className="text-[13px] text-[#374151] mt-[6px]">
-            <span className="font-bold text-[#475569]">Progress:</span>{" "}
-            {task.progress}
+          <p className="text-gray-600">
+            Progress: {task.progress}
           </p>
 
-          {/* ACTION BUTTONS */}
           {showActions && (
-            <div className="flex items-center justify-between mt-[12px]">
-              
-              {/* PROGRESS DROPDOWN */}
+            <div className="flex gap-[10px] mt-[10px]">
+
+              {/* UPDATE PROGRESS */}
               <select
-                defaultValue={task.progress}
-                onChange={(e) => updateProgress(task._id, e.target.value)}
-                className="p-[8px] rounded-[10px] border border-[#cbd5e1] bg-white
-                           shadow-sm text-[13px] outline-none"
+                value={task.progress}
+                onChange={async (e) => {
+                  await api.put(`/tasks/${task.id}`, {
+                    progress: e.target.value
+                  });
+                  onChange();
+                }}
+                className="border p-[5px] rounded"
               >
-                <option value="not-started">Not Started</option>
-                <option value="in-progress">In Progress</option>
-                <option value="completed">Completed</option>
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
               </select>
+
+              {/* EDIT BUTTON */}
+              <button
+                onClick={() => setEditingTask(task)}
+                className="bg-blue-500 text-white px-[10px] py-[5px] rounded flex items-center gap-[5px]"
+              >
+                <FaEdit />
+                Edit
+              </button>
 
               {/* DELETE BUTTON */}
               <button
-                onClick={() => deleteTask(task._id)}
-                className="px-[14px] py-[8px] bg-[#ef4444] text-white rounded-[10px]
-                           shadow-[0_4px_10px_rgba(239,68,68,0.4)] hover:bg-[#dc2626]
-                           text-[13px] font-medium"
+                onClick={() => deleteTask(task.id)}
+                className="bg-red-500 text-white px-[12px] py-[5px] rounded"
               >
                 Delete
               </button>
+
             </div>
           )}
         </div>
       ))}
+
+      {/* EDIT MODAL */}
+      {editingTask && (
+        <div className="fixed inset-0 flex justify-center items-center bg-black/30">
+
+          <div className="bg-white p-[20px] rounded shadow-lg w-[350px]">
+
+            <h2 className="font-bold text-[18px] mb-[10px]">
+              Update Task
+            </h2>
+
+            <form onSubmit={updateTask} className="space-y-[10px]">
+
+              <input
+                name="title"
+                defaultValue={editingTask.title}
+                className="w-full border p-[8px] rounded"
+              />
+
+              <textarea
+                name="description"
+                defaultValue={editingTask.description}
+                className="w-full border p-[8px] rounded"
+              />
+
+              <select
+                name="progress"
+                defaultValue={editingTask.progress}
+                className="w-full border p-[8px] rounded"
+              >
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="COMPLETED">Completed</option>
+              </select>
+
+              <div className="flex justify-end gap-[10px]">
+
+                <button
+                  type="button"
+                  onClick={() => setEditingTask(null)}
+                  className="px-[10px] py-[6px] bg-gray-300 rounded"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-[10px] py-[6px] bg-indigo-600 text-white rounded"
+                >
+                  Update
+                </button>
+
+              </div>
+
+            </form>
+
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }
