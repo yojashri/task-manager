@@ -1,108 +1,113 @@
 import { useState, useContext } from "react";
+import { Link } from "react-router-dom";
 import api from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
-import { Link } from "react-router-dom";
 
 export default function Login() {
+
   const { login } = useContext(AuthContext);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({
+    email: "",
+    password: ""
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const submit = async (e) => {
+    e.preventDefault();
 
-  e.preventDefault()
-  console.log("Attempting login with:", { email, password })
+    setError("");
+    setLoading(true);
 
-  try {
+    try {
 
-    const res = await api.post("/auth/login", {
-      email: email,
-      password: password
-    })
+      const res = await api.post("/auth/login", form);
 
-    console.log("LOGIN RESPONSE:", res.data)
+      login(res.data.user, res.data.accessToken);
 
-    login(
-      res.data.user,
-      res.data.accessToken
-    )
+      window.location.href = "/";
 
-    window.location.href = "/"
+    } catch (err) {
 
-  } catch (err) {
+      setError(err.response?.data?.message || "Login failed");
 
-    console.log("LOGIN ERROR:", err)
-
-    alert(err.response?.data?.message || "Login failed")
-
-  }
-
-}
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-[#eef5ff] to-[#c9dfff]">
+    <div className="min-h-screen flex justify-center items-center bg-[#cfe0ff]">
 
-      {/* CARD */}
-      <div className="w-full max-w-[430px] bg-white rounded-[20px] p-[34px] shadow-[0_10px_35px_rgba(0,0,0,0.10)] border border-[#e1e5ec]">
+      <div className="w-full max-w-[430px] bg-white rounded-2xl p-8 shadow-lg border">
 
-        {/* TITLE */}
-        <h2 className="text-center text-[#1d3aa9] text-[32px] font-extrabold tracking-[-0.5px] mb-[6px]">
+        <h2 className="text-center text-black text-3xl font-bold mb-2">
           EdTech Task Manager
         </h2>
 
-        {/* SUBTEXT */}
-        <p className="text-center text-[#5f6c85] text-[15px] mb-[30px]">
+        <p className="text-center text-gray-600 mb-6">
           Login to continue
         </p>
 
-        {/* FORM */}
-        <form onSubmit={submit} className="space-y-[18px]">
+        {error && (
+          <p className="text-red-500 text-center mb-4">
+            {error}
+          </p>
+        )}
+
+        <form onSubmit={submit} className="space-y-4">
 
           {/* EMAIL */}
           <input
             type="email"
+            name="email"
             placeholder="Email"
-            className="w-full p-[15px] rounded-[12px] border border-[#ccd3e0] text-[15px]
-                       outline-none bg-[#f6f8fc]
-                       shadow-[0_2px_4px_rgba(0,0,0,0.05)]
-                       focus:shadow-[0_0_0_2px_#3b82f6]
-                       transition-all duration-200"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={form.email}
+            onChange={handleChange}
+            required
+            className="w-full p-3 border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black"
           />
 
           {/* PASSWORD */}
           <input
             type="password"
+            name="password"
             placeholder="Password"
-            className="w-full p-[15px] rounded-[12px] border border-[#ccd3e0] text-[15px]
-                       outline-none bg-[#f6f8fc]
-                       shadow-[0_2px_4px_rgba(0,0,0,0.05)]
-                       focus:shadow-[0_0_0_2px_#3b82f6]
-                       transition-all duration-200"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={form.password}
+            onChange={handleChange}
+            required
+            className="w-full p-3 border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-black"
           />
 
           {/* LOGIN BUTTON */}
-          <button type="submit"
-            className="w-full py-[14px] rounded-[12px] text-white text-[16px] font-semibold
-                       bg-[#2563eb] hover:bg-[#1d4ed8] transition
-                       shadow-[0_6px_16px_rgba(37,99,235,0.35)]"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-black text-white rounded-lg hover:bg-gray-900 transition disabled:opacity-60"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
+
         </form>
 
-        {/* LINK */}
-        <p className="text-center text-[#475569] text-[14px] mt-[22px]">
+        <p className="text-center text-sm text-gray-600 mt-5">
           New user?{" "}
-          <Link to="/signup" className="text-[#2563eb] font-semibold hover:underline">
+          <Link to="/signup" className="font-semibold underline">
             Register
           </Link>
         </p>
+
       </div>
+
     </div>
   );
 }

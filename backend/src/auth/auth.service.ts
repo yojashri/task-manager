@@ -26,57 +26,68 @@ export class AuthService {
       }
     })
 
-    return user
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      teacherId: user.teacherId
+    }
   }
 
   
   // LOGIN
-  
-  async login(data: any) {
+ // LOGIN
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: data.email }
-    })
+async login(data: any) {
 
-    if (!user) throw new UnauthorizedException('Invalid credentials')
+  const user = await this.prisma.user.findUnique({
+    where: { email: data.email }
+  })
 
-    const valid = await bcrypt.compare(data.password, user.password)
+  if (!user) throw new UnauthorizedException('Invalid credentials')
 
-    if (!valid) throw new UnauthorizedException('Invalid credentials')
+  const valid = await bcrypt.compare(data.password, user.password)
 
-    // Access Token (contains role)
-    const accessToken = this.jwtService.sign(
-      {
-        id: user.id,
-        role: user.role
-      },
-      { expiresIn: '10m' }
-    )
+  if (!valid) throw new UnauthorizedException('Invalid credentials')
 
-    // Refresh Token (only id)
-    const refreshToken = this.jwtService.sign(
-      {
-        id: user.id
-      },
-      { expiresIn: '7d' }
-    )
+  // Access Token
+  const accessToken = this.jwtService.sign(
+    {
+      id: user.id,
+      role: user.role
+    },
+    { expiresIn: '10m' }
+  )
 
-    // Store refresh token in DB
-    await this.prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      }
-    })
+  // Refresh Token
+  const refreshToken = this.jwtService.sign(
+    {
+      id: user.id
+    },
+    { expiresIn: '7d' }
+  )
 
-    return {
-      accessToken,
-      refreshToken,
-      user
+  // Store refresh token in DB
+  await this.prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  })
+
+  // Return safe user object
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      teacherId: user.teacherId
     }
   }
-
+}
   
   // REFRESH TOKEN
   

@@ -2,58 +2,83 @@ import { useState, useEffect, useContext } from "react";
 import api from "../api/axios";
 import { AuthContext } from "../context/AuthContext";
 import TaskList from "../components/TaskList";
+import TaskForm from "../components/TaskForm";
 
 export default function Dashboard() {
+
   const { user, logout } = useContext(AuthContext);
 
-  const [allTasks, setAllTasks] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
   const [studentTasks, setStudentTasks] = useState([]);
   const [assignedStudents, setAssignedStudents] = useState([]);
   const [usersMap, setUsersMap] = useState({});
+
   const [showModal, setShowModal] = useState(false);
+  const [openStudent, setOpenStudent] = useState(null);
+  const [activeTab, setActiveTab] = useState("mytasks");
+  const [expandedDesc, setExpandedDesc] = useState({});
 
-  // LOAD USERS
-const loadUsers = async () => {
-  try {
-    const res = await api.get("/auth/users")
+  const toggleDesc = (id) => {
+    setExpandedDesc((prev) => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
-    const users = res?.data || []
+  const toggleStudent = (email) => {
+    setOpenStudent(openStudent === email ? null : email);
+  };
 
-    let map = {}
-    let assigned = []
+  const groupStudentTasks = (tasks) => {
+    const grouped = {};
+    tasks.forEach((task) => {
+      const email = usersMap[task.userId];
+      if (!grouped[email]) grouped[email] = [];
+      grouped[email].push(task);
+    });
+    return grouped;
+  };
 
-    users.forEach((u) => {
+  const loadUsers = async () => {
+    try {
+      const res = await api.get("/auth/users");
+      const users = res?.data || [];
 
-      map[u.id] = u.email
+      const map = {};
+      const assigned = [];
 
-      if (u.role === "student" && u.teacherId === user.id) {
-        assigned.push(u.id)
-      }
+      users.forEach((u) => {
+        map[u.id] = u.email;
 
-    })
+        if (u.role === "student" && u.teacherId === user.id) {
+          assigned.push(u.id);
+        }
+      });
 
-    setUsersMap(map)
-    setAssignedStudents(assigned)
+      setUsersMap(map);
+      setAssignedStudents(assigned);
 
-  } catch (err) {
-    console.error("Failed loading users", err)
-  }
-}
-  // LOAD TASKS
+    } catch (err) {
+      console.error("Failed loading users", err);
+    }
+  };
+
   const loadTasks = async () => {
     try {
       const res = await api.get("/tasks");
-
       const tasks = res?.data || [];
 
-      setAllTasks(tasks);
+      const my = tasks
+        .filter((t) => t.userId === user.id)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-      setMyTasks(tasks.filter((t) => t.userId === user.id));
-
-      setStudentTasks(
-        tasks.filter((t) => assignedStudents.includes(t.userId))
+      const students = tasks.filter((t) =>
+        assignedStudents.includes(t.userId)
       );
+
+      setMyTasks(my);
+      setStudentTasks(students);
+
     } catch (err) {
       console.error("Failed loading tasks", err);
     }
@@ -67,227 +92,200 @@ const loadUsers = async () => {
     loadTasks();
   }, [assignedStudents]);
 
-  // CREATE TASK
-  const createTask = async (e) => {
-    e.preventDefault();
-
-    const today = new Date().toISOString().split("T")[0];
-
-    const title = e.target.title.value;
-    const description = e.target.description.value;
-    const dueDate = e.target.dueDate.value;
-
-    if (dueDate < today) {
-      alert("You cannot select an earlier date!");
-      return;
-    }
-
-    try {
-      await api.post("/tasks", { title, description, dueDate });
-
-      setShowModal(false);
-
-      e.target.reset();
-
-      loadTasks();
-    } catch (err) {
-      console.error("Task creation failed", err);
-    }
-  };
-
-  // GROUP STUDENT TASKS
-  const grouped = {};
-
-  studentTasks.forEach((t) => {
-    const email = usersMap[t.userId];
-
-    if (!grouped[email]) grouped[email] = [];
-
-    grouped[email].push(t);
-  });
+  const grouped = groupStudentTasks(studentTasks);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] p-[22px]">
+    <div className="min-h-screen bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] p-6">
 
-      {/* HEADER */}
-      <div
-        className="flex items-center justify-between
-        bg-white/70 backdrop-blur-md
-        shadow-[0_8px_30px_rgba(0,0,0,0.12)]
-        rounded-[20px] border border-white/50
-        px-[26px] py-[16px] mb-[28px]"
-      >
-        <h1 className="text-[30px] font-extrabold text-[#1E1B4B] tracking-wide">
-          EduTech
-        </h1>
+      {/* <div className="max-w-6xl mx-auto"> */}
 
-        <h2 className="text-[22px] font-bold text-[#4338CA]">
-          Dashboard
-        </h2>
+        {/* HEADER */}
+        <div className="bg-white border-b shadow-sm w-full px-10 py-5">
 
-        <button
-          onClick={()=>{console.log("Logging out..."); logout();}}
-          className="px-[18px] py-[10px] rounded-[12px]
-          bg-red-500 text-white shadow-lg
-          hover:bg-red-600 transition-all"
-        >
-          Logout
-        </button>
-      </div>
+          <div className="flex justify-between items-center">
 
-      {/* STUDENT VIEW */}
-      {user.role === "student" && (
-        <div
-          className="bg-white/80 backdrop-blur-lg p-[25px]
-          rounded-[20px] shadow-xl border border-white/50"
-        >
-          <h3 className="text-[22px] font-bold mb-[15px] text-[#1E1B4B]">
-            My Tasks
-          </h3>
+            <div>
+              <h1 className="text-3xl font-bold">EdTech Task Manager</h1>
 
-          <TaskList
-            tasks={myTasks}
-            showActions={true}
-            onChange={loadTasks}
-            usersMap={usersMap}
-          />
+              <div className="flex items-center gap-3 mt-2 text-gray-600">
+                <span>👤 {user.email}</span>
+                <span className="bg-gray-200 px-3 py-1 rounded-full text-sm">
+                  {user.role}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={logout}
+              className="border px-5 py-2 rounded-lg hover:bg-gray-100"
+            >
+              Logout
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* TABS */}
+        <div className="max-w-6xl mx-auto">
+        <div className="flex gap-6 mt-6 mb-4">
 
           <button
-            onClick={() => setShowModal(true)}
-            className="fixed bottom-[30px] right-[30px]
-            bg-[#4F46E5] hover:bg-[#4338CA] text-white
-            w-[60px] h-[60px] rounded-full text-[35px]
-            shadow-xl flex items-center justify-center"
+            onClick={() => setActiveTab("mytasks")}
+            className={`font-semibold ${
+              activeTab === "mytasks"
+                ? "text-indigo-600 border-b-2 border-indigo-600"
+                : "text-gray-600"
+            }`}
           >
-            +
+            My Tasks
           </button>
-        </div>
-      )}
 
-      {/* TEACHER VIEW */}
-      {user.role === "teacher" && (
-        <>
-          <div
-            className="bg-white/80 backdrop-blur-lg p-[25px]
-            rounded-[20px] shadow-xl border border-white/50 mb-[28px] relative"
-          >
-            <h3 className="text-[22px] font-bold mb-[15px] text-[#1E1B4B]">
-              My Tasks (Teacher)
+          {user.role === "teacher" && (
+            <button
+              onClick={() => setActiveTab("students")}
+              className={`font-semibold ${
+                activeTab === "students"
+                  ? "text-indigo-600 border-b-2 border-indigo-600"
+                  : "text-gray-600"
+              }`}
+            >
+              Assigned Students
+            </button>
+          )}
+
+        </div>
+
+        {/* MY TASKS */}
+        {activeTab === "mytasks" && (
+          <div className="bg-white p-6 rounded-xl shadow-md mb-6 relative">
+
+            <h3 className="text-lg font-bold mb-4 text-gray-800">
+              {user.role === "teacher" ? "My Tasks (Teacher)" : "My Tasks"}
             </h3>
 
             <TaskList
               tasks={myTasks}
               showActions={true}
               onChange={loadTasks}
-              usersMap={usersMap}
             />
 
             <button
               onClick={() => setShowModal(true)}
-              className="absolute right-[20px] bottom-[20px]
-              bg-[#4F46E5] hover:bg-[#4338CA] text-white
-              w-[60px] h-[60px] rounded-full text-[35px]
-              shadow-xl flex items-center justify-center"
+              className="absolute right-6 bottom-6 bg-indigo-600 text-white w-14 h-14 rounded-full text-3xl shadow-lg flex items-center justify-center"
             >
               +
             </button>
-          </div>
 
-          <div
-            className="bg-white/80 backdrop-blur-lg p-[25px]
-            rounded-[20px] shadow-xl border border-white/50"
-          >
-            <h3 className="text-[22px] font-bold mb-[20px] text-[#1E1B4B]">
+          </div>
+        )}
+
+        {/* ASSIGNED STUDENTS */}
+        {user.role === "teacher" && activeTab === "students" && (
+
+          <div className="bg-white p-6 rounded-xl shadow-md">
+
+            <h3 className="text-lg font-bold mb-6 text-gray-800">
               Assigned Student Tasks
             </h3>
 
             {Object.keys(grouped).map((email) => (
-              <div key={email} className="mb-[28px]">
-                <p className="text-[18px] font-semibold text-[#4338CA] mb-[10px]">
-                  👤 {email}
-                </p>
 
-                {grouped[email].map((task) => (
-                  <div
-                    key={task.id}
-                    className="p-[18px] bg-white/90 backdrop-blur-sm
-                    border border-indigo-100 shadow-md rounded-[16px] mb-[12px]"
-                  >
-                    <p className="text-[17px] font-semibold text-[#1E1B4B]">
-                      Title: <span className="font-normal">{task.title}</span>
-                    </p>
+              <div key={email} className="mb-4 border rounded-xl">
 
-                    <p className="text-[14px] text-gray-700 mt-[4px]">
-                      Description: {task.description}
-                    </p>
-
-                    <p className="text-[13px] text-gray-600 mt-[4px]">
-                      Progress: {task.progress}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* MODAL */}
-      {showModal && (
-        <>
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
-
-          <div className="fixed inset-0 flex justify-center items-center">
-            <div
-              className="bg-white/95 p-[25px] w-[360px]
-              rounded-[20px] shadow-2xl border border-gray-200"
-            >
-              <h2 className="text-[20px] font-bold text-[#1E1B4B] mb-[15px]">
-                Create New Task
-              </h2>
-
-              <form onSubmit={createTask} className="space-y-[12px]">
-                <input
-                  name="title"
-                  placeholder="Title"
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
-                />
-
-                <textarea
-                  name="description"
-                  placeholder="Description"
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
-                />
-
-                <input
-                  name="dueDate"
-                  type="date"
-                  min={new Date().toISOString().split("T")[0]}
-                  className="w-full p-[12px] border rounded-[12px] bg-white/80"
-                />
-
-                <div className="flex justify-end gap-[10px]">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-[14px] py-[8px] bg-gray-300 rounded-[10px]"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="px-[14px] py-[8px] bg-[#4F46E5] text-white rounded-[10px]
-                    hover:bg-[#4338CA] shadow"
-                  >
-                    Create
-                  </button>
+                <div
+                  onClick={() => toggleStudent(email)}
+                  className="flex justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
+                >
+                  <p className="font-semibold text-indigo-600">👤 {email}</p>
+                  <span>{openStudent === email ? "▲" : "▼"}</span>
                 </div>
-              </form>
-            </div>
+
+                {openStudent === email && (
+
+                  <div className="px-4 pb-4">
+
+                    {grouped[email]
+                      .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
+                      .map((task) => {
+
+                        const isExpanded = expandedDesc[task.id];
+                        const longDesc = task.description?.length > 80;
+
+                        return (
+                          <div
+                            key={task.id}
+                            className="p-4 bg-white border rounded-lg mb-3"
+                          >
+
+                            <p className="text-xs text-gray-500 mb-1">
+                              Due: {task.dueDate
+                                ? new Date(task.dueDate).toLocaleDateString()
+                                : "No Date"}
+                            </p>
+
+                            <p className="font-semibold">{task.title}</p>
+
+                            <p className="text-sm text-gray-600 mt-1">
+                              {isExpanded
+                                ? task.description
+                                : task.description?.slice(0, 80)}
+                            </p>
+
+                            {longDesc && (
+                              <button
+                                onClick={() => toggleDesc(task.id)}
+                                className="text-indigo-600 text-xs mt-1"
+                              >
+                                {isExpanded ? "Show less" : "Read more"}
+                              </button>
+                            )}
+
+                          </div>
+                        );
+                      })}
+
+                  </div>
+
+                )}
+
+              </div>
+
+            ))}
+
           </div>
-        </>
-      )}
+
+        )}
+
+        {/* CREATE TASK MODAL */}
+        {showModal && (
+          <>
+            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
+
+            <div className="fixed inset-0 flex justify-center items-center">
+
+              <div className="bg-white p-10 w-[650px] rounded-2xl shadow-xl">
+
+                <h2 className="text-xl font-bold mb-5">
+                  Create New Task
+                </h2>
+
+                <TaskForm
+                  onSuccess={() => {
+                    setShowModal(false);
+                    loadTasks();
+                  }}
+                  onCancel={() => setShowModal(false)}
+                />
+
+              </div>
+
+            </div>
+          </>
+        )}
+
+      </div>
+
     </div>
   );
 }
