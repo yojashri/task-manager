@@ -1,39 +1,122 @@
-import { createContext, useState } from "react"
+import { createContext, useState, useEffect } from "react"
 import api from "../api/axios"
+
 export const AuthContext = createContext()
 
 export default function AuthProvider({ children }) {
 
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user"))
-  )
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = (user, accessToken) => {
 
-  localStorage.setItem("token", accessToken)
-  localStorage.setItem("user", JSON.stringify(user))
 
-  setUser(user)
+  // =========================
+  // LOAD USER FROM STORAGE
+  // =========================
+  useEffect(() => {
 
-}
- const logout = async () => {
-try{
-  await api.post("/auth/logout")
+    try {
 
-  localStorage.removeItem("token")
-  localStorage.removeItem("user")
+      const storedUser = localStorage.getItem("user")
 
-  setUser(null)
+      if (storedUser) {
+        setUser(JSON.parse(storedUser))
+      }
 
-  window.location.href = "/login"
-}catch(err){
-  console.error("Logout failed", err)
-  alert("Logout failed")
-}}
+    } catch (err) {
+
+      console.error("Failed to load user", err)
+
+      localStorage.removeItem("user")
+
+    }
+
+    setLoading(false)
+
+  }, [])
+
+
+
+  // =========================
+  // LOGIN FUNCTION
+  // =========================
+  const login = (userData, accessToken) => {
+
+    try {
+
+      localStorage.setItem("token", accessToken)
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify(userData)
+      )
+
+      setUser(userData)
+
+    } catch (err) {
+
+      console.error("Login storage error", err)
+
+    }
+  }
+
+
+
+  // =========================
+  // LOGOUT FUNCTION
+  // =========================
+  const logout = async () => {
+
+    try {
+
+      await api.post("/auth/logout")
+
+    } catch (err) {
+
+      console.error("Logout request failed", err)
+
+    }
+
+    // Clear storage
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+
+    setUser(null)
+
+    window.location.href = "/login"
+  }
+
+
+
+  // =========================
+  // PREVENT APP LOAD BEFORE AUTH
+  // =========================
+  if (loading) {
+
+    return (
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
+        Loading...
+      </div>
+    )
+
+  }
+
+
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout
+      }}
+    >
+
       {children}
+
     </AuthContext.Provider>
+
   )
+
 }

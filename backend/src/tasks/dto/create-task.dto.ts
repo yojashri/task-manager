@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator'
+import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator'
+import { Progress } from '@prisma/client'
 
 export class CreateTaskDto {
 
@@ -12,4 +13,9 @@ export class CreateTaskDto {
   @IsOptional()
   @IsDateString()
   dueDate?: string
+
+  @IsOptional()
+  @IsEnum(Progress)
+  progress?: Progress
+
 }

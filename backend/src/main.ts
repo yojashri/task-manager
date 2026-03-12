@@ -5,6 +5,12 @@ import { ValidationPipe } from '@nestjs/common'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+   app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true
+    })
+  )
 
   app.use(cookieParser())
 
@@ -13,12 +19,7 @@ async function bootstrap() {
     credentials: true
   })
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true
-    })
-  )
+ 
 
   await app.listen(3000)
 }

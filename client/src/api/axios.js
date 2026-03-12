@@ -2,7 +2,11 @@ import axios from "axios"
 
 const api = axios.create({
   baseURL: "http://localhost:3000",
-  withCredentials: true   // important for cookies
+  withCredentials: true,   // important for cookies
+  headers: {
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+  },
 })
 
 /* Attach access token */

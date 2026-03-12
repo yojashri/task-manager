@@ -1,133 +1,187 @@
-import { useState, useEffect, useContext } from "react";
-import api from "../api/axios";
-import { AuthContext } from "../context/AuthContext";
-import TaskList from "../components/TaskList";
-import TaskForm from "../components/TaskForm";
+import { useState, useEffect, useContext, useMemo, useCallback } from "react"
+import api from "../api/axios"
+import { AuthContext } from "../context/AuthContext"
+import TaskList from "../components/TaskList"
+import TaskForm from "../components/TaskForm"
 
 export default function Dashboard() {
 
-  const { user, logout } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext)
 
-  const [myTasks, setMyTasks] = useState([]);
-  const [studentTasks, setStudentTasks] = useState([]);
-  const [assignedStudents, setAssignedStudents] = useState([]);
-  const [usersMap, setUsersMap] = useState({});
+  const [myTasks, setMyTasks] = useState([])
+  const [studentTasks, setStudentTasks] = useState([])
+  const [usersMap, setUsersMap] = useState({})
 
-  const [showModal, setShowModal] = useState(false);
-  const [openStudent, setOpenStudent] = useState(null);
-  const [activeTab, setActiveTab] = useState("mytasks");
-  const [expandedDesc, setExpandedDesc] = useState({});
+  const [showModal, setShowModal] = useState(false)
+  const [openStudent, setOpenStudent] = useState(null)
+  const [activeTab, setActiveTab] = useState("mytasks")
+  const [expandedDesc, setExpandedDesc] = useState({})
 
-  const toggleDesc = (id) => {
-    setExpandedDesc((prev) => ({
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [totalPages, setTotalPages] = useState(1)
+
+  const limit = 8
+
+  // ================================
+  // Toggle description
+  // ================================
+  const toggleDesc = useCallback((id) => {
+    setExpandedDesc(prev => ({
       ...prev,
       [id]: !prev[id]
-    }));
-  };
+    }))
+  }, [])
 
-  const toggleStudent = (email) => {
-    setOpenStudent(openStudent === email ? null : email);
-  };
+  // ================================
+  // Open student accordion
+  // ================================
+  const toggleStudent = useCallback((email) => {
+    setOpenStudent(prev => prev === email ? null : email)
+  }, [])
 
-  const groupStudentTasks = (tasks) => {
-    const grouped = {};
-    tasks.forEach((task) => {
-      const email = usersMap[task.userId];
-      if (!grouped[email]) grouped[email] = [];
-      grouped[email].push(task);
-    });
-    return grouped;
-  };
+  // ================================
+  // Group student tasks by email
+  // ================================
+  const groupedStudentTasks = useMemo(() => {
 
+    const grouped = {}
+
+    studentTasks.forEach(task => {
+
+      const email = usersMap[task.userId] || "Unknown Student"
+
+      if (!grouped[email]) grouped[email] = []
+
+      grouped[email].push(task)
+
+    })
+
+    return grouped
+
+  }, [studentTasks, usersMap])
+
+  // ================================
+  // Load users for email mapping
+  // ================================
   const loadUsers = async () => {
+
     try {
-      const res = await api.get("/auth/users");
-      const users = res?.data || [];
 
-      const map = {};
-      const assigned = [];
+      const res = await api.get("/auth/users")
+      const users = res.data || []
 
-      users.forEach((u) => {
-        map[u.id] = u.email;
+      const map = {}
 
-        if (u.role === "student" && u.teacherId === user.id) {
-          assigned.push(u.id);
-        }
-      });
+      users.forEach(u => {
+        map[u.id] = u.email
+      })
 
-      setUsersMap(map);
-      setAssignedStudents(assigned);
+      setUsersMap(map)
 
     } catch (err) {
-      console.error("Failed loading users", err);
+      console.error("Failed loading users", err)
     }
-  };
 
+  }
+
+  // ================================
+  // Load tasks with pagination
+  // ================================
   const loadTasks = async () => {
+
     try {
-      const res = await api.get("/tasks");
-      const tasks = res?.data || [];
 
-      const my = tasks
-        .filter((t) => t.userId === user.id)
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      setLoading(true)
 
-      const students = tasks.filter((t) =>
-        assignedStudents.includes(t.userId)
-      );
+      const res = await api.get(`/tasks?page=${page}&limit=${limit}`)
 
-      setMyTasks(my);
-      setStudentTasks(students);
+      const tasks = res.data.tasks || []
+      const total = res.data.total || 0
+
+      // // teacher tasks
+      // const my = tasks.filter(t => t.userId === user.id)
+
+      // // student tasks
+      // const students = tasks.filter(t => t.userId !== user.id)
+      let my = []
+let students = []
+
+tasks.forEach(task => {
+  if (task.userId === user.id) {
+    my.push(task)
+  } else {
+    students.push(task)
+  }
+})
+
+      setMyTasks(my)
+      setStudentTasks(students)
+
+      setTotalPages(Math.ceil(total / limit))
 
     } catch (err) {
-      console.error("Failed loading tasks", err);
+
+      console.error("Failed loading tasks", err)
+
+    } finally {
+
+      setLoading(false)
+
     }
-  };
 
+  }
+
+  // ================================
+  // Load users first
+  // ================================
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (user) loadUsers()
+  }, [user])
 
+  // ================================
+  // Load tasks
+  // ================================
   useEffect(() => {
-    loadTasks();
-  }, [assignedStudents]);
-
-  const grouped = groupStudentTasks(studentTasks);
+    if (user) loadTasks()
+  }, [user, page])
 
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-[#EEF2FF] to-[#E0E7FF] p-6">
 
-      {/* <div className="max-w-6xl mx-auto"> */}
+      {/* HEADER */}
+      <div className="bg-white border-b shadow-sm w-full px-10 py-5">
 
-        {/* HEADER */}
-        <div className="bg-white border-b shadow-sm w-full px-10 py-5">
+        <div className="flex justify-between items-center">
 
-          <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">EdTech Task Manager</h1>
 
-            <div>
-              <h1 className="text-3xl font-bold">EdTech Task Manager</h1>
+            <div className="flex items-center gap-3 mt-2 text-gray-600">
+              <span>👤 {user.email}</span>
 
-              <div className="flex items-center gap-3 mt-2 text-gray-600">
-                <span>👤 {user.email}</span>
-                <span className="bg-gray-200 px-3 py-1 rounded-full text-sm">
-                  {user.role}
-                </span>
-              </div>
+              <span className="bg-gray-200 px-3 py-1 rounded-full text-sm">
+                {user.role}
+              </span>
             </div>
-
-            <button
-              onClick={logout}
-              className="border px-5 py-2 rounded-lg hover:bg-gray-100"
-            >
-              Logout
-            </button>
 
           </div>
 
+          <button
+            onClick={logout}
+            className="border px-5 py-2 rounded-lg hover:bg-gray-100"
+          >
+            Logout
+          </button>
+
         </div>
 
+      </div>
+
+      <div className="max-w-6xl mx-auto">
+
         {/* TABS */}
-        <div className="max-w-6xl mx-auto">
         <div className="flex gap-6 mt-6 mb-4">
 
           <button
@@ -142,6 +196,7 @@ export default function Dashboard() {
           </button>
 
           {user.role === "teacher" && (
+
             <button
               onClick={() => setActiveTab("students")}
               className={`font-semibold ${
@@ -152,24 +207,63 @@ export default function Dashboard() {
             >
               Assigned Students
             </button>
+
           )}
 
         </div>
 
         {/* MY TASKS */}
         {activeTab === "mytasks" && (
+
           <div className="bg-white p-6 rounded-xl shadow-md mb-6 relative">
 
             <h3 className="text-lg font-bold mb-4 text-gray-800">
-              {user.role === "teacher" ? "My Tasks (Teacher)" : "My Tasks"}
+              My Tasks
             </h3>
 
-            <TaskList
-              tasks={myTasks}
-              showActions={true}
-              onChange={loadTasks}
-            />
+            {loading
+              ? <p className="text-gray-500">Loading tasks...</p>
+              : <TaskList tasks={myTasks} showActions onChange={loadTasks} />
+            }
 
+            {/* Pagination */}
+            <div className="flex justify-center items-center gap-2 mt-6">
+
+              <button
+                disabled={page === 1}
+                onClick={() => setPage(page - 1)}
+                className="px-3 py-1 bg-gray-200 rounded"
+              >
+                Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => (
+
+                <button
+                  key={i}
+                  onClick={() => setPage(i + 1)}
+                  className={`px-3 py-1 rounded ${
+                    page === i + 1
+                      ? "bg-indigo-600 text-white"
+                      : "bg-gray-200"
+                  }`}
+                >
+                  {i + 1}
+                </button>
+
+              ))}
+
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage(page + 1)}
+                className="px-3 py-1 bg-gray-200 rounded"
+              >
+                Next
+              </button>
+
+            </div>
+
+            {/* Floating button */}
             <button
               onClick={() => setShowModal(true)}
               className="absolute right-6 bottom-6 bg-indigo-600 text-white w-14 h-14 rounded-full text-3xl shadow-lg flex items-center justify-center"
@@ -178,9 +272,10 @@ export default function Dashboard() {
             </button>
 
           </div>
+
         )}
 
-        {/* ASSIGNED STUDENTS */}
+        {/* STUDENT TASKS */}
         {user.role === "teacher" && activeTab === "students" && (
 
           <div className="bg-white p-6 rounded-xl shadow-md">
@@ -189,7 +284,11 @@ export default function Dashboard() {
               Assigned Student Tasks
             </h3>
 
-            {Object.keys(grouped).map((email) => (
+            {Object.keys(groupedStudentTasks).length === 0 && (
+              <p className="text-gray-500">No student tasks found</p>
+            )}
+
+            {Object.keys(groupedStudentTasks).map(email => (
 
               <div key={email} className="mb-4 border rounded-xl">
 
@@ -197,53 +296,61 @@ export default function Dashboard() {
                   onClick={() => toggleStudent(email)}
                   className="flex justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
                 >
-                  <p className="font-semibold text-indigo-600">👤 {email}</p>
+
+                  <p className="font-semibold text-indigo-600">
+                    👤 {email}
+                  </p>
+
                   <span>{openStudent === email ? "▲" : "▼"}</span>
+
                 </div>
 
                 {openStudent === email && (
 
                   <div className="px-4 pb-4">
 
-                    {grouped[email]
-                      .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
-                      .map((task) => {
+                    {groupedStudentTasks[email].map(task => {
 
-                        const isExpanded = expandedDesc[task.id];
-                        const longDesc = task.description?.length > 80;
+                      const isExpanded = expandedDesc[task.id]
+                      const longDesc = task.description?.length > 80
 
-                        return (
-                          <div
-                            key={task.id}
-                            className="p-4 bg-white border rounded-lg mb-3"
-                          >
+                      return (
 
-                            <p className="text-xs text-gray-500 mb-1">
-                              Due: {task.dueDate
-                                ? new Date(task.dueDate).toLocaleDateString()
-                                : "No Date"}
-                            </p>
+                        <div
+                          key={task.id}
+                          className="p-4 bg-white border rounded-lg mb-3"
+                        >
 
-                            <p className="font-semibold">{task.title}</p>
+                          <p className="text-xs text-gray-500 mb-1">
+                            Due: {task.dueDate
+                              ? new Date(task.dueDate).toLocaleDateString()
+                              : "No Date"}
+                          </p>
 
-                            <p className="text-sm text-gray-600 mt-1">
-                              {isExpanded
-                                ? task.description
-                                : task.description?.slice(0, 80)}
-                            </p>
+                          <p className="font-semibold">{task.title}</p>
 
-                            {longDesc && (
-                              <button
-                                onClick={() => toggleDesc(task.id)}
-                                className="text-indigo-600 text-xs mt-1"
-                              >
-                                {isExpanded ? "Show less" : "Read more"}
-                              </button>
-                            )}
+                          <p className="text-sm text-gray-600 mt-1">
+                            {isExpanded
+                              ? task.description
+                              : task.description?.slice(0, 80)}
+                          </p>
 
-                          </div>
-                        );
-                      })}
+                          {longDesc && (
+
+                            <button
+                              onClick={() => toggleDesc(task.id)}
+                              className="text-indigo-600 text-xs mt-1"
+                            >
+                              {isExpanded ? "Show less" : "Read more"}
+                            </button>
+
+                          )}
+
+                        </div>
+
+                      )
+
+                    })}
 
                   </div>
 
@@ -257,35 +364,35 @@ export default function Dashboard() {
 
         )}
 
-        {/* CREATE TASK MODAL */}
-        {showModal && (
-          <>
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
-
-            <div className="fixed inset-0 flex justify-center items-center">
-
-              <div className="bg-white p-10 w-[650px] rounded-2xl shadow-xl">
-
-                <h2 className="text-xl font-bold mb-5">
-                  Create New Task
-                </h2>
-
-                <TaskForm
-                  onSuccess={() => {
-                    setShowModal(false);
-                    loadTasks();
-                  }}
-                  onCancel={() => setShowModal(false)}
-                />
-
-              </div>
-
-            </div>
-          </>
-        )}
-
       </div>
 
+      {/* CREATE TASK MODAL */}
+      {showModal && (
+
+        <>
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm"></div>
+
+          <div className="fixed inset-0 flex justify-center items-center">
+
+            <div className="bg-white p-10 w-[650px] rounded-2xl shadow-xl">
+
+              <h2 className="text-xl font-bold mb-5">Create New Task</h2>
+
+              <TaskForm
+                onSuccess={() => {
+                  setShowModal(false)
+                  loadTasks()
+                }}
+                onCancel={() => setShowModal(false)}
+              />
+
+            </div>
+
+          </div>
+        </>
+      )}
+
     </div>
-  );
+
+  )
 }

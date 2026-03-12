@@ -23,8 +23,13 @@ import { ConfigModule } from '@nestjs/config'
 import { PrismaModule } from './prisma/prisma.module'
 import { AuthModule } from './auth/auth.module'
 import { TasksModule } from './tasks/tasks.module'
+import { ThrottlerModule } from '@nestjs/throttler' 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 10, // 10 requests per minute
+    }]),
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
