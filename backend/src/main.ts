@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import cookieParser from 'cookie-parser'
 import { ValidationPipe } from '@nestjs/common'
+import helmet from 'helmet'
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
@@ -11,6 +13,7 @@ async function bootstrap() {
       forbidNonWhitelisted: true
     })
   )
+  app.use(helmet())
 
   app.use(cookieParser())
 

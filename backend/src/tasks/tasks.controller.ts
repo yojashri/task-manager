@@ -8,35 +8,51 @@ import {
   Param,
   Req,
   UseGuards,
-  ParseUUIDPipe
+  ParseUUIDPipe,
+  Query
 } from '@nestjs/common'
-import { PaginationDto } from 'src/common/dto/pagination.dto' 
+
+import { PaginationDto } from 'src/common/dto/pagination.dto'
 import { CreateTaskDto } from './dto/create-task.dto'
 import { UpdateTaskDto } from './dto/update-task.dto'
 import { TasksService } from './tasks.service'
 import { JwtAuthGuard } from '../auth/guards/jwt.guard'
-import {Query} from '@nestjs/common'
+
 @Controller('tasks')
 export class TasksController {
 
   constructor(private readonly tasksService: TasksService) {}
 
-
-
-  // =========================
-  // GET TASKS
-  // =========================
+  // ===================================
+  // GET MY TASKS
+  // ===================================
   @UseGuards(JwtAuthGuard)
-  @Get()
-  getTasks(@Req() req, @Query() pagination: PaginationDto) {
-    return this.tasksService.getTasks(req.user,pagination)
+  @Get('my')
+  getMyTasks(
+    @Req() req,
+    @Query() pagination: PaginationDto
+  ) {
+    return this.tasksService.getMyTasks(req.user, pagination)
   }
 
 
+  // ===================================
+  // GET STUDENT TASKS (Teacher)
+  // ===================================
+  @UseGuards(JwtAuthGuard)
+  @Get('student/:id')
+  getStudentTasks(
+    @Req() req,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query() pagination: PaginationDto
+  ) {
+    return this.tasksService.getStudentTasks(req.user, id, pagination)
+  }
 
-  // =========================
+
+  // ===================================
   // CREATE TASK
-  // =========================
+  // ===================================
   @UseGuards(JwtAuthGuard)
   @Post()
   createTask(
@@ -47,10 +63,9 @@ export class TasksController {
   }
 
 
-
-  // =========================
+  // ===================================
   // UPDATE TASK
-  // =========================
+  // ===================================
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   updateTask(
@@ -62,10 +77,9 @@ export class TasksController {
   }
 
 
-
-  // =========================
+  // ===================================
   // DELETE TASK
-  // =========================
+  // ===================================
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   deleteTask(

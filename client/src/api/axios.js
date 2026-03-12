@@ -2,14 +2,11 @@ import axios from "axios"
 
 const api = axios.create({
   baseURL: "http://localhost:3000",
-  withCredentials: true,   // important for cookies
-  headers: {
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-  },
+  withCredentials: true
 })
 
-/* Attach access token */
+
+// Add token to request
 api.interceptors.request.use((config) => {
 
   const token = localStorage.getItem("token")
@@ -19,32 +16,37 @@ api.interceptors.request.use((config) => {
   }
 
   return config
+
 })
 
-/* Handle expired token */
+
+// Handle expired token
 api.interceptors.response.use(
+
   (response) => response,
 
   async (error) => {
 
-    if (error.response?.status === 401) {
+    const originalRequest = error.config
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry
+    ) {
+
+      originalRequest._retry = true
 
       try {
 
-        // refresh token will be sent automatically via cookie
-        const res = await axios.post(
-          "http://localhost:3000/auth/refresh",
-          {},
-          { withCredentials: true }
-        )
+        const res = await api.post("/auth/refresh")
 
         const newToken = res.data.accessToken
 
         localStorage.setItem("token", newToken)
 
-        error.config.headers.Authorization = `Bearer ${newToken}`
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
 
-        return axios(error.config)
+        return api(originalRequest)
 
       } catch {
 
@@ -56,7 +58,9 @@ api.interceptors.response.use(
     }
 
     return Promise.reject(error)
+
   }
+
 )
 
 export default api

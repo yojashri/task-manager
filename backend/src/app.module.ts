@@ -23,7 +23,8 @@ import { ConfigModule } from '@nestjs/config'
 import { PrismaModule } from './prisma/prisma.module'
 import { AuthModule } from './auth/auth.module'
 import { TasksModule } from './tasks/tasks.module'
-import { ThrottlerModule } from '@nestjs/throttler' 
+import { ThrottlerModule } from '@nestjs/throttler'
+import { StudentsModule } from './students/students.module' 
 @Module({
   imports: [
     ThrottlerModule.forRoot([{
@@ -33,6 +34,7 @@ import { ThrottlerModule } from '@nestjs/throttler'
     ConfigModule.forRoot({ isGlobal: true }),
     PrismaModule,
     AuthModule,
+    StudentsModule,
     TasksModule
   ],
 })

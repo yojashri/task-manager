@@ -7,58 +7,17 @@ export class TasksService {
 
   constructor(private prisma: PrismaService) {}
 
-  async getTasks(user: any, pagination: any) {
+  // ===================================
+  // GET MY TASKS (Teacher or Student)
+  // ===================================
+  async getMyTasks(user: any, pagination: any) {
 
     const page = Number(pagination.page) || 1
     const limit = Number(pagination.limit) || 10
     const skip = (page - 1) * limit
 
-    // ===============================
-    // TEACHER: see own tasks + students tasks
-    // ===============================
-    if (user.role === "teacher") {
-
-      const students = await this.prisma.user.findMany({
-        where: { teacherId: user.id },   // ✅ FIXED
-        select: { id: true }
-      })
-
-      const studentIds = students.map(s => s.id)
-
-      const tasks = await this.prisma.task.findMany({
-        where: {
-          OR: [
-            { userId: user.id },        // ✅ FIXED
-            { userId: { in: studentIds } }
-          ]
-        },
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' }
-      })
-
-      const total = await this.prisma.task.count({
-        where: {
-          OR: [
-            { userId: user.id },
-            { userId: { in: studentIds } }
-          ]
-        }
-      })
-
-      return {
-        tasks,
-        total,
-        page,
-        limit
-      }
-    }
-
-    // ===============================
-    // STUDENT: see only own tasks
-    // ===============================
     const tasks = await this.prisma.task.findMany({
-      where: { userId: user.id },  // ✅ FIXED
+      where: { userId: user.id },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' }
@@ -76,24 +35,70 @@ export class TasksService {
     }
   }
 
-  // ===============================
+
+  // ===================================
+  // GET TASKS OF A STUDENT (Teacher)
+  // ===================================
+  async getStudentTasks(user: any, studentId: string, pagination: any) {
+
+    if (user.role !== 'teacher') {
+      throw new ForbiddenException('Only teachers can view student tasks')
+    }
+
+    const page = Number(pagination.page) || 1
+    const limit = Number(pagination.limit) || 10
+    const skip = (page - 1) * limit
+
+    const student = await this.prisma.user.findFirst({
+      where: {
+        id: studentId,
+        teacherId: user.id
+      }
+    })
+
+    if (!student) {
+      throw new ForbiddenException('Student not assigned to this teacher')
+    }
+
+    const tasks = await this.prisma.task.findMany({
+      where: { userId: studentId },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' }
+    })
+
+    const total = await this.prisma.task.count({
+      where: { userId: studentId }
+    })
+
+    return {
+      tasks,
+      total,
+      page,
+      limit
+    }
+  }
+
+
+  // ===================================
   // CREATE TASK
-  // ===============================
+  // ===================================
   async createTask(user: any, data: any) {
 
     return this.prisma.task.create({
       data: {
         title: data.title,
         description: data.description,
-        dueDate: new Date(data.dueDate),
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
         userId: user.id
       }
     })
   }
 
-  // ===============================
+
+  // ===================================
   // UPDATE TASK
-  // ===============================
+  // ===================================
   async updateTask(id: string, user: any, dto: UpdateTaskDto) {
 
     const task = await this.prisma.task.findUnique({
@@ -114,9 +119,10 @@ export class TasksService {
     })
   }
 
-  // ===============================
+
+  // ===================================
   // DELETE TASK
-  // ===============================
+  // ===================================
   async deleteTask(id: string, user: any) {
 
     const task = await this.prisma.task.findUnique({
@@ -131,4 +137,5 @@ export class TasksService {
       where: { id }
     })
   }
+
 }

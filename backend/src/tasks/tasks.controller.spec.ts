@@ -9,6 +9,6 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Get()
   getTasks() {
-    return this.tasksService.getTasks()
+    return this.tasksService.getMyTasks()
   }
 }
